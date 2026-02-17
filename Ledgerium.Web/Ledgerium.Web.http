@@ -1,0 +1,6 @@
+@Ledgerium.Web_HostAddress = http://localhost:5198
+
+GET {{Ledgerium.Web_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

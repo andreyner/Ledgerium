@@ -1,0 +1,60 @@
+﻿version: "3.9"
+
+services:
+  ledgerium-db:
+    image: postgres:15
+    container_name: ledgerium-db
+    environment:
+      POSTGRES_USER: ledgerium_user
+      POSTGRES_PASSWORD: ledgerium_pass
+      POSTGRES_DB: ledgerium
+    ports:
+      - "15432:5432"
+    volumes:
+      - ledgerium-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ledgerium-network
+      
+  seq:
+    image: datalust/seq:latest
+    container_name: ledgerium-seq
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
+    ports:
+       - "15341:80"     # UI
+       - "15342:5341"   # приём логов
+    volumes:
+      - seq-data:/data
+    networks:
+      - ledgerium-network
+      
+  ledgerium-app:
+    build:
+      context: .
+      dockerfile: Ledgerium.Web/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__Postgres: Host=ledgerium-db;Port=5432;Database=ledgerium;Username=ledgerium_user;Password=ledgerium_pass
+      SEQ_URL: "http://ledgerium-seq:5341"
+    depends_on:
+      ledgerium-db:
+        condition: service_healthy
+    ports:
+      - "15542:80"
+    command: ["dotnet", "Ledgerium.Web.dll", "--migrate"]
+    networks:
+      - ledgerium-network
+
+networks:
+  ledgerium-network:
+    driver: bridge
+volumes:
+  ledgerium-data:
+  seq-data:
+  seq-logs:
